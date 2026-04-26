@@ -1,0 +1,7 @@
+{
+  "name": "linkedin-campaign-manager-mcp",
+  "description": "MCP server for the LinkedIn Marketing API. 19 tools for ad accounts, campaigns, campaign groups, creatives, performance analytics, demographics, video analytics, budget pacing, conversion events, lead gen forms, audience segments, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns.",
+  "license": "MIT",
+  "homepage": "https://github.com/ZLeventer/linkedin-campaign-manager-mcp",
+  "runtime": "node"
+}

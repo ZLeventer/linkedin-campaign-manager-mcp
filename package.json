@@ -1,0 +1,27 @@
+{
+  "name": "linkedin-campaign-manager-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for the LinkedIn Marketing API — 19 tools for ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, conversions, lead gen forms, audiences, and targeting facets.",
+  "type": "module",
+  "bin": { "linkedin-campaign-manager-mcp": "dist/index.js" },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "prepare": "npm run build",
+    "auth": "tsc && node dist/init-auth.js"
+  },
+  "keywords": ["mcp", "linkedin", "linkedin-ads", "campaign-manager", "marketing", "b2b", "paid-social", "claude"],
+  "license": "MIT",
+  "homepage": "https://github.com/ZLeventer/linkedin-campaign-manager-mcp",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": { "node": ">=20" }
+}
