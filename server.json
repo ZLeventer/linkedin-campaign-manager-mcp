@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.zleventer/linkedin-campaign-manager-mcp",
+  "title": "LinkedIn Campaign Manager",
+  "description": "MCP server for the LinkedIn Marketing API. 19 read-only tools for ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, period comparisons, conversions, Lead Gen Forms, audiences, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns.",
+  "repository": {
+    "url": "https://github.com/ZLeventer/linkedin-campaign-manager-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "linkedin-campaign-manager-mcp",
+      "version": "1.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "LINKEDIN_CLIENT_ID",
+          "description": "LinkedIn Developer App OAuth client ID",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "LINKEDIN_CLIENT_SECRET",
+          "description": "LinkedIn Developer App OAuth client secret",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "LINKEDIN_TOKEN_PATH",
+          "description": "Absolute path to the OAuth token.json file (created by 'npm run auth')",
+          "isRequired": true
+        },
+        {
+          "name": "LINKEDIN_DEFAULT_AD_ACCOUNT",
+          "description": "Default LinkedIn ad account ID (numeric, no urn: prefix). Tools fall back to this when ad_account_id is not passed.",
+          "isRequired": false
+        },
+        {
+          "name": "LINKEDIN_API_VERSION",
+          "description": "LinkedIn Rosetta API version in YYYYMM format (default 202504)",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
