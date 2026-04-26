@@ -1,4 +1,5 @@
 {
+  "$schema": "https://glama.ai/mcp/schema/v1/server.json",
   "name": "linkedin-campaign-manager-mcp",
   "description": "MCP server for the LinkedIn Marketing API. 19 tools for ad accounts, campaigns, campaign groups, creatives, performance analytics, demographics, video analytics, budget pacing, conversion events, lead gen forms, audience segments, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns.",
   "license": "MIT",
