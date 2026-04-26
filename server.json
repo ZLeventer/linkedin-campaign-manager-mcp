@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.zleventer/linkedin-campaign-manager-mcp",
   "title": "LinkedIn Campaign Manager",
-  "description": "MCP server for the LinkedIn Marketing API. 19 read-only tools for ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, period comparisons, conversions, Lead Gen Forms, audiences, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns.",
+  "description": "MCP server for LinkedIn Ads — 19 read-only tools for campaigns, performance, and Lead Gen Forms.",
   "repository": {
     "url": "https://github.com/ZLeventer/linkedin-campaign-manager-mcp",
     "source": "github"
