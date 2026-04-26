@@ -1,11 +1,42 @@
 # LinkedIn Campaign Manager MCP
 
-[![npm](https://img.shields.io/npm/v/linkedin-campaign-manager-mcp)](https://www.npmjs.com/package/linkedin-campaign-manager-mcp)
+[![npm version](https://img.shields.io/npm/v/linkedin-campaign-manager-mcp.svg)](https://www.npmjs.com/package/linkedin-campaign-manager-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/linkedin-campaign-manager-mcp.svg)](https://www.npmjs.com/package/linkedin-campaign-manager-mcp)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
+[![MCP](https://img.shields.io/badge/MCP-compatible-blueviolet)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-MCP server for the LinkedIn Marketing API. **19 read-only tools** covering ad accounts, campaigns, campaign groups, creatives, performance analytics, video analytics, budget pacing, period comparisons, demographic reports, conversion events, Lead Gen Forms, audience segments, and targeting facets.
+**MCP server for the LinkedIn Marketing API — query campaigns, performance, and Lead Gen Forms from Claude in plain English.**
 
-Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns on LinkedIn.
+19 read-only tools covering ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, period comparisons, conversions, Lead Gen Forms, audiences, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns on LinkedIn.
+
+---
+
+## Why this exists
+
+The LinkedIn Marketing API is notoriously painful to work with: monthly Rosetta versioning, undocumented field mappings, Rest.li-style nested query params for analytics, and 60-day access tokens that silently expire. This server handles all of that under the hood so you can ask questions in plain English instead of hand-writing `dateRange=(start:(year:...))`.
+
+No other open-source MCP server for LinkedIn Ads ships this depth. Most stop at "list campaigns." This one includes demographics, video completion funnel, budget pacing, period comparisons, and Lead Gen Form responses with PII so you can reconcile leads against Marketo or Salesforce.
+
+---
+
+## Example prompts
+
+Once installed, ask Claude things like:
+
+- *"What's our LinkedIn Ads spend trend the last 28 days, broken down by campaign group?"*
+- *"Compare CPL on the competitor-conquest campaigns this month vs. last — which creatives moved the number?"*
+- *"Pull demographics for our top-spending campaign — what seniority and industry are converting?"*
+- *"Which Lead Gen Forms had the highest submit rate last month, and what did each cost per lead?"*
+- *"Show the video completion funnel for our awareness campaign — where are people dropping off?"*
+- *"Are any campaigns at risk of overspending? Show budget pacing across all active ones."*
+- *"Pull yesterday's Lead Gen Form responses so I can spot-check them against Marketo."*
+
+---
+
+## Demo
+
+> 🎥 *Walkthrough video coming soon — querying LinkedIn campaign performance from Claude Code in under 60 seconds.*
 
 ---
 
