@@ -395,12 +395,22 @@ export async function getBudgetPacing(args: {
       })
     );
   } else {
-    const res = await liGet<{ elements?: Array<Record<string, unknown>> }>(
-      `/adAccounts/${accountId}/adCampaigns`,
-      { q: "search", pageSize: 100 },
-      { search: "(status:(values:List(ACTIVE)))" }
-    );
-    campaigns = res.elements ?? [];
+    // Page through all active campaigns — accounts can have well over 100.
+    let pageStart = 0;
+    const pageSize = 100;
+    while (true) {
+      const res = await liGet<{ elements?: Array<Record<string, unknown>> }>(
+        `/adAccounts/${accountId}/adCampaigns`,
+        { q: "search", pageSize, start: pageStart },
+        { search: "(status:(values:List(ACTIVE)))" }
+      );
+      const batch = res.elements ?? [];
+      campaigns.push(...batch);
+      if (batch.length < pageSize) break;
+      pageStart += pageSize;
+      // Safety stop — LinkedIn offset finders cap around 1k.
+      if (pageStart >= 5000) break;
+    }
   }
 
   // Fetch spend for the period
@@ -437,7 +447,9 @@ export async function getBudgetPacing(args: {
     const campaignUrn = urn("sponsoredCampaign", id);
     const spend = spendMap.get(campaignUrn) ?? { usd: 0, local: 0 };
 
-    // totalBudget is a {amount, currencyCode} object
+    // totalBudget / dailyBudget are {amount, currencyCode} objects in the
+    // account's local currency — NOT USD. Pace against costInLocalCurrency
+    // so the ratio is denominated correctly for non-USD accounts.
     const totalBudget = c["totalBudget"] as { amount?: string; currencyCode?: string } | undefined;
     const dailyBudget = c["dailyBudget"] as { amount?: string; currencyCode?: string } | undefined;
 
@@ -445,10 +457,11 @@ export async function getBudgetPacing(args: {
     const dailyBudgetAmount = dailyBudget?.amount ? Number(dailyBudget.amount) : null;
     const estimatedPeriodBudget = dailyBudgetAmount ? dailyBudgetAmount * periodDays : null;
     const effectiveBudget = budgetAmount ?? estimatedPeriodBudget;
+    const currencyCode = totalBudget?.currencyCode ?? dailyBudget?.currencyCode ?? null;
 
     const utilizationPct =
       effectiveBudget && effectiveBudget > 0
-        ? Math.round((spend.usd / effectiveBudget) * 10000) / 100
+        ? Math.round((spend.local / effectiveBudget) * 10000) / 100
         : null;
 
     return {
@@ -456,11 +469,12 @@ export async function getBudgetPacing(args: {
       campaign_urn: campaignUrn,
       name: c["name"],
       status: c["status"],
-      total_budget_usd: budgetAmount,
-      daily_budget_usd: dailyBudgetAmount,
-      estimated_period_budget_usd: estimatedPeriodBudget,
-      spend_usd: spend.usd,
+      currency_code: currencyCode,
+      total_budget: budgetAmount,
+      daily_budget: dailyBudgetAmount,
+      estimated_period_budget: estimatedPeriodBudget,
       spend_local: spend.local,
+      spend_usd: spend.usd,
       utilization_pct: utilizationPct,
       period_days: periodDays,
     };
