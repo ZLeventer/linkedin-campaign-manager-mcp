@@ -34,7 +34,7 @@ export async function getConversionEvents(args: {
   const params: Record<string, string | number> = {
     q: "account",
     account,
-    count: args.page_size ?? 50,
+    pageSize: args.page_size ?? 50,
   };
   if (args.enabled_only !== false) {
     params["enabled"] = "true";
