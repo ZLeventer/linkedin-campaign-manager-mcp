@@ -200,6 +200,13 @@ export const comparePeriodsSchema = {
   fields: z.string().optional(),
 };
 
+function isoDate(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function periodDates(c: (typeof COMPARISONS)[number]): {
   currentStart: string; currentEnd: string; priorStart: string; priorEnd: string;
 } {
@@ -209,7 +216,18 @@ function periodDates(c: (typeof COMPARISONS)[number]): {
   if (c === "mom") {
     return { currentStart: "30daysAgo", currentEnd: "yesterday", priorStart: "60daysAgo", priorEnd: "31daysAgo" };
   }
-  return { currentStart: "30daysAgo", currentEnd: "yesterday", priorStart: "395daysAgo", priorEnd: "366daysAgo" };
+  // YoY: shift current window back exactly one calendar year (handles leap years correctly).
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  const currentStartDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30));
+  const priorEndDate = new Date(Date.UTC(yesterday.getUTCFullYear() - 1, yesterday.getUTCMonth(), yesterday.getUTCDate()));
+  const priorStartDate = new Date(Date.UTC(currentStartDate.getUTCFullYear() - 1, currentStartDate.getUTCMonth(), currentStartDate.getUTCDate()));
+  return {
+    currentStart: "30daysAgo",
+    currentEnd: "yesterday",
+    priorStart: isoDate(priorStartDate),
+    priorEnd: isoDate(priorEndDate),
+  };
 }
 
 function keyOf(row: AnalyticsElement): string {
@@ -429,19 +447,32 @@ export async function getBudgetPacing(args: {
   });
 
   const spendData = await liGetRaw<AnalyticsResponse>(spendUrl);
+  // Index spend by both full URN and bare ID so we don't silently miss when
+  // LinkedIn returns pivotValues in a slightly different shape than constructed.
   const spendMap = new Map<string, { usd: number; local: number }>();
+  const unmatchedPivots: string[] = [];
   for (const row of spendData.elements ?? []) {
     const key = (row.pivotValues?.[0] ?? "") as string;
-    spendMap.set(key, {
+    const value = {
       usd: Number(row["costInUsd"] ?? 0),
       local: Number(row["costInLocalCurrency"] ?? 0),
-    });
+    };
+    spendMap.set(key, value);
+    spendMap.set(unwrapURN(key), value);
+    unmatchedPivots.push(key);
   }
 
   const pacing = campaigns.map((c) => {
-    const id = c["id"] as string ?? "";
+    const id = (c["id"] as string) ?? "";
     const campaignUrn = urn("sponsoredCampaign", id);
-    const spend = spendMap.get(campaignUrn) ?? { usd: 0, local: 0 };
+    const spend =
+      spendMap.get(campaignUrn) ?? spendMap.get(id) ?? { usd: 0, local: 0 };
+    if (!spendMap.has(campaignUrn) && !spendMap.has(id) && spendData.elements?.length) {
+      console.error(
+        `[linkedin-mcp] getBudgetPacing: no spend row matched campaign ${campaignUrn}. ` +
+        `Returned pivot keys: ${unmatchedPivots.slice(0, 3).join(", ")}${unmatchedPivots.length > 3 ? "..." : ""}`
+      );
+    }
 
     // totalBudget is a {amount, currencyCode} object
     const totalBudget = c["totalBudget"] as { amount?: string; currencyCode?: string } | undefined;

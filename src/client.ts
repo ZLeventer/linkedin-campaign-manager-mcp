@@ -9,8 +9,20 @@ export class LinkedInError extends Error {
   }
 }
 
+const DEFAULT_API_VERSION = "202504";
+let warnedDefaultVersion = false;
+
 function apiVersion(): string {
-  return process.env.LINKEDIN_API_VERSION ?? "202504";
+  const v = process.env.LINKEDIN_API_VERSION;
+  if (v) return v;
+  if (!warnedDefaultVersion) {
+    warnedDefaultVersion = true;
+    console.error(
+      `[linkedin-mcp] LINKEDIN_API_VERSION not set; defaulting to ${DEFAULT_API_VERSION}. ` +
+      `LinkedIn rotates Rest versions ~quarterly — pin a current version in .env to avoid silent breakage.`
+    );
+  }
+  return DEFAULT_API_VERSION;
 }
 
 async function liFetch<T>(method: string, url: string): Promise<T> {
@@ -97,6 +109,11 @@ export function resolveAdAccount(override?: string): string {
 // LinkedIn's adAnalytics endpoint takes dateRange as nested year/month/day
 // objects — NOT ISO strings. Example URL fragment:
 //   dateRange=(start:(year:2024,month:10,day:1),end:(year:2024,month:10,day:31))
+//
+// All date math here runs in UTC. LinkedIn interprets dateRange against the
+// account's timezone, so a UTC "yesterday" can be off by one calendar day for
+// accounts in non-UTC zones late at night. Pass an explicit YYYY-MM-DD when
+// account-timezone alignment matters.
 
 export const DEFAULT_START = "28daysAgo";
 export const DEFAULT_END = "yesterday";
