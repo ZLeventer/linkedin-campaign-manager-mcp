@@ -346,13 +346,18 @@ export async function getVideoAnalytics(args: {
 
   const raw = await liGetRaw<AnalyticsResponse>(url);
 
-  // Compute completion rate per creative
+  // Compute completion rate per creative. The denominator is videoStarts —
+  // a distinct play event. videoViews (a 2-second view) is NOT a substitute,
+  // so if videoStarts is missing/zero we leave the rate null rather than
+  // emit a misleadingly low number.
   const enriched = (raw.elements ?? []).map((row) => {
-    const starts = Number(row["videoStarts"] ?? row["videoViews"] ?? 0);
+    const startsRaw = row["videoStarts"];
+    const starts = startsRaw === undefined ? 0 : Number(startsRaw);
     const completions = Number(row["videoCompletions"] ?? 0);
     return {
       ...row,
-      videoCompletionRate: starts > 0 ? Math.round((completions / starts) * 10000) / 100 : null,
+      videoCompletionRate:
+        starts > 0 ? Math.round((completions / starts) * 10000) / 100 : null,
     };
   });
 

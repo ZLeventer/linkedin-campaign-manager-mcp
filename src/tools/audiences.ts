@@ -1,25 +1,15 @@
 import { z } from "zod";
 import { liGet, resolveAdAccount } from "../client.js";
 
-const SEGMENT_TYPES = ["USER", "COMPANY", "COMBINED"] as const;
-
 // ─── get-audience-insights ──────────────────────────────────────────────────
 
 export const getAudienceInsightsSchema = {
   ad_account_id: z.string().optional(),
-  type: z
-    .enum(SEGMENT_TYPES)
-    .optional()
-    .describe(
-      "Filter segment type: USER (contact list / matched audience), " +
-      "COMPANY (company list for ABM), COMBINED (combined / lookalike segment)."
-    ),
   page_size: z.number().int().min(1).max(100).default(50),
 };
 
 export async function getAudienceInsights(args: {
   ad_account_id?: string;
-  type?: string;
   page_size?: number;
 }) {
   const account = resolveAdAccount(args.ad_account_id);
@@ -27,9 +17,6 @@ export async function getAudienceInsights(args: {
     q: "account",
     count: args.page_size ?? 50,
   };
-  if (args.type) {
-    params["type"] = args.type;
-  }
   return liGet("/dmpSegments", params, { account });
 }
 
