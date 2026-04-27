@@ -9,7 +9,7 @@ export class LinkedInError extends Error {
   }
 }
 
-const DEFAULT_API_VERSION = "202504";
+const DEFAULT_API_VERSION = "202604";
 let warnedDefaultVersion = false;
 
 function apiVersion(): string {
