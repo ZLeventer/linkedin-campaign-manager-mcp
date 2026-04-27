@@ -1,7 +1,5 @@
 import { z } from "zod";
 import {
-  BASE_URL,
-  dateRangeParam,
   DEFAULT_END,
   DEFAULT_START,
   liGet,
@@ -10,6 +8,7 @@ import {
   resolveDate,
   urn,
 } from "../client.js";
+import { buildAnalyticsUrl } from "./analytics.js";
 
 // ─── get-conversion-events ──────────────────────────────────────────────────
 
@@ -33,13 +32,12 @@ export async function getConversionEvents(args: {
   const account = resolveAdAccount(args.ad_account_id);
   const params: Record<string, string | number> = {
     q: "account",
-    account,
     count: args.page_size ?? 50,
   };
   if (args.enabled_only !== false) {
     params["enabled"] = "true";
   }
-  return liGet("/conversionEvents", params);
+  return liGet("/conversionEvents", params, { account });
 }
 
 // ─── get-conversion-performance ─────────────────────────────────────────────
@@ -88,19 +86,14 @@ export async function getConversionPerformance(args: {
       ? undefined
       : resolveAdAccount(args.ad_account_id);
 
-  const qs: string[] = [
-    "q=statistics",
-    "pivot=CONVERSION",
-    "timeGranularity=ALL",
-    `dateRange=${dateRangeParam(start, end)}`,
-    `fields=${fields}`,
-  ];
-  if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=List(${campaignUrns.join(",")})`);
-  } else if (accountUrn) {
-    qs.push(`accounts=List(${accountUrn})`);
-  }
-
-  const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;
+  const url = buildAnalyticsUrl({
+    pivot: "CONVERSION",
+    timeGranularity: "ALL",
+    start,
+    end,
+    fields,
+    campaignUrns,
+    accountUrn,
+  });
   return liGetRaw(url);
 }

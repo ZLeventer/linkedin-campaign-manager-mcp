@@ -1,7 +1,5 @@
 import { z } from "zod";
 import {
-  BASE_URL,
-  dateRangeParam,
   DEFAULT_END,
   DEFAULT_START,
   liGet,
@@ -10,6 +8,7 @@ import {
   resolveDate,
   urn,
 } from "../client.js";
+import { buildAnalyticsUrl } from "./analytics.js";
 
 const FORM_STATES = ["DRAFT", "SUBMITTED", "ACTIVE", "ARCHIVED"] as const;
 
@@ -32,13 +31,12 @@ export async function getLeadgenForms(args: {
   const account = resolveAdAccount(args.ad_account_id);
   const params: Record<string, string | number> = {
     q: "account",
-    account,
     count: args.page_size ?? 50,
   };
   if (args.state) {
     params["state"] = args.state;
   }
-  return liGet("/leadGenForms", params);
+  return liGet("/leadGenForms", params, { account });
 }
 
 // ─── get-leadgen-responses ──────────────────────────────────────────────────
@@ -67,11 +65,11 @@ export async function getLeadgenResponses(args: {
   const account = resolveAdAccount(args.ad_account_id);
   const params: Record<string, string | number> = {
     q: "owner",
-    owner: account,
     count: args.page_size ?? 50,
   };
+  const rawParams: Record<string, string> = { owner: account };
   if (args.lead_form_id) {
-    params["leadForm"] = urn("leadGenForm", args.lead_form_id);
+    rawParams["leadForm"] = urn("leadGenForm", args.lead_form_id);
   }
   if (args.submitted_after) {
     const t = Date.parse(args.submitted_after);
@@ -81,7 +79,7 @@ export async function getLeadgenResponses(args: {
     const t = Date.parse(args.submitted_before);
     if (!Number.isNaN(t)) params["submittedAtTimeRange.end"] = t;
   }
-  return liGet("/leadFormResponses", params);
+  return liGet("/leadFormResponses", params, rawParams);
 }
 
 // ─── get-leadgen-form-performance ───────────────────────────────────────────
@@ -125,20 +123,15 @@ export async function getLeadgenFormPerformance(args: {
       ? undefined
       : resolveAdAccount(args.ad_account_id);
 
-  const qs: string[] = [
-    "q=statistics",
-    "pivot=CREATIVE",
-    "timeGranularity=ALL",
-    `dateRange=${dateRangeParam(start, end)}`,
-    `fields=${LGF_FIELDS}`,
-  ];
-  if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=List(${campaignUrns.join(",")})`);
-  } else if (accountUrn) {
-    qs.push(`accounts=List(${accountUrn})`);
-  }
-
-  const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;
+  const url = buildAnalyticsUrl({
+    pivot: "CREATIVE",
+    timeGranularity: "ALL",
+    start,
+    end,
+    fields: LGF_FIELDS,
+    campaignUrns,
+    accountUrn,
+  });
   const raw = await liGetRaw<{ elements?: Array<Record<string, unknown>>; paging?: unknown }>(url);
 
   // Compute form open rate and lead conversion rate per creative
