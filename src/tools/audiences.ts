@@ -25,13 +25,12 @@ export async function getAudienceInsights(args: {
   const account = resolveAdAccount(args.ad_account_id);
   const params: Record<string, string | number> = {
     q: "account",
-    account,
     count: args.page_size ?? 50,
   };
   if (args.type) {
     params["type"] = args.type;
   }
-  return liGet("/dmpSegments", params);
+  return liGet("/dmpSegments", params, { account });
 }
 
 // ─── search-targeting-facets ─────────────────────────────────────────────────
@@ -84,11 +83,14 @@ export async function searchTargetingFacets(args: {
   count?: number;
 }) {
   const facetUrn = `urn:li:adTargetingFacet:${args.facet}`;
-  return liGet("/adTargetingFacets", {
-    q: "typeahead",
-    facetUrn,
-    query: args.query,
-    locale: args.locale ?? "en_US",
-    count: args.count ?? 20,
-  });
+  return liGet(
+    "/adTargetingFacets",
+    {
+      q: "typeahead",
+      query: args.query,
+      locale: args.locale ?? "en_US",
+      count: args.count ?? 20,
+    },
+    { facetUrn }
+  );
 }
