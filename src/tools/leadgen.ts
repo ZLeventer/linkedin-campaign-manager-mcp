@@ -13,6 +13,16 @@ import {
 
 const FORM_STATES = ["DRAFT", "SUBMITTED", "ACTIVE", "ARCHIVED"] as const;
 
+function parseUtcDateMs(s: string): number | null {
+  // Treat bare YYYY-MM-DD as UTC midnight regardless of host locale/Node version.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const t = Date.parse(s + "T00:00:00Z");
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : t;
+}
+
 // ─── get-leadgen-forms ──────────────────────────────────────────────────────
 
 export const getLeadgenFormsSchema = {
@@ -121,12 +131,12 @@ export async function getLeadgenResponses(args: {
     params["leadForm"] = urn("leadGenForm", args.lead_form_id);
   }
   if (args.submitted_after) {
-    const t = Date.parse(args.submitted_after);
-    if (!Number.isNaN(t)) params["submittedAtTimeRange.start"] = t;
+    const t = parseUtcDateMs(args.submitted_after);
+    if (t !== null) params["submittedAtTimeRange.start"] = t;
   }
   if (args.submitted_before) {
-    const t = Date.parse(args.submitted_before);
-    if (!Number.isNaN(t)) params["submittedAtTimeRange.end"] = t;
+    const t = parseUtcDateMs(args.submitted_before);
+    if (t !== null) params["submittedAtTimeRange.end"] = t;
   }
   const result = await liGet<{ elements?: Array<Record<string, unknown>> }>(
     "/leadFormResponses",
@@ -211,5 +221,8 @@ export async function getLeadgenFormPerformance(args: {
     };
   });
 
-  return { ...raw, enriched };
+  // Drop raw.elements to avoid returning every metric twice — `enriched` is a
+  // superset (raw fields plus computed rates).
+  const { elements: _elements, ...rest } = raw;
+  return { ...rest, enriched };
 }

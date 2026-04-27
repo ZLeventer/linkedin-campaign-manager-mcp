@@ -149,6 +149,7 @@ export async function runInitFlow(): Promise<void> {
   console.error(authUrl.toString());
   console.error("\nWaiting for redirect on port " + port + "...\n");
 
+  const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
   const code: string = await new Promise((res, rej) => {
     const server = createServer((req, resp) => {
       try {
@@ -186,6 +187,11 @@ export async function runInitFlow(): Promise<void> {
     });
     server.on("error", rej);
     server.listen(port, "127.0.0.1");
+    const timer = setTimeout(() => {
+      server.close();
+      rej(new AuthError(`OAuth flow timed out after ${AUTH_TIMEOUT_MS / 1000}s — re-run \`npm run auth\`.`));
+    }, AUTH_TIMEOUT_MS);
+    server.on("close", () => clearTimeout(timer));
   });
 
   const tokenRes = await fetch(LINKEDIN_TOKEN_URL, {
