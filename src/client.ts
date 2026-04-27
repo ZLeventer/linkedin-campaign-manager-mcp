@@ -13,26 +13,66 @@ function apiVersion(): string {
   return process.env.LINKEDIN_API_VERSION ?? "202504";
 }
 
+const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const date = Date.parse(header);
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  return null;
+}
+
 async function liFetch<T>(method: string, url: string): Promise<T> {
   const token = await getAccessToken();
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "LinkedIn-Version": apiVersion(),
-      "X-Restli-Protocol-Version": "2.0.0",
-      Accept: "application/json",
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new LinkedInError(
-      `LinkedIn ${method} ${url} → ${res.status}: ${text.slice(0, 500)}`,
-      res.status,
-      text
-    );
+  let attempt = 0;
+  while (true) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "LinkedIn-Version": apiVersion(),
+          "X-Restli-Protocol-Version": "2.0.0",
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === "TimeoutError" || e.name === "AbortError") {
+        throw new LinkedInError(
+          `LinkedIn ${method} ${url} → request timed out after ${REQUEST_TIMEOUT_MS}ms`
+        );
+      }
+      throw err;
+    }
+
+    if (res.status === 429 && attempt < MAX_RETRIES) {
+      const retryAfter = parseRetryAfter(res.headers.get("Retry-After"));
+      const backoff = retryAfter ?? Math.min(30_000, 1000 * 2 ** attempt);
+      await sleep(backoff);
+      attempt++;
+      continue;
+    }
+
+    const text = await res.text();
+    if (!res.ok) {
+      throw new LinkedInError(
+        `LinkedIn ${method} ${url} → ${res.status}: ${text.slice(0, 500)}`,
+        res.status,
+        text
+      );
+    }
+    return text ? (JSON.parse(text) as T) : ({} as T);
   }
-  return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
 /** GET with auto-encoded query params. For simple list/filter endpoints. */

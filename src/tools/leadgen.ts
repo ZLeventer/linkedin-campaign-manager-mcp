@@ -55,7 +55,53 @@ export const getLeadgenResponsesSchema = {
     .describe("ISO date (YYYY-MM-DD). Only include responses submitted on or after this date."),
   submitted_before: z.string().optional().describe("ISO date (YYYY-MM-DD). Upper bound for submission date."),
   page_size: z.number().int().min(1).max(100).default(50),
+  redact_pii: z
+    .boolean()
+    .default(true)
+    .describe(
+      "If true (default), mask PII in questionResponses (email, phone, name fields) before returning. " +
+      "Set false only when the caller has a documented reason to handle raw lead PII."
+    ),
 };
+
+const PII_QUESTION_PATTERNS = [
+  /email/i,
+  /phone/i,
+  /first[\s_-]*name/i,
+  /last[\s_-]*name/i,
+  /full[\s_-]*name/i,
+  /address/i,
+  /zip/i,
+  /postal/i,
+];
+
+function maskValue(v: string): string {
+  if (!v) return v;
+  if (v.length <= 4) return "***";
+  return v.slice(0, 2) + "***" + v.slice(-2);
+}
+
+function redactResponses(elements: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return elements.map((el) => {
+    const responses = el["questionResponses"];
+    if (!Array.isArray(responses)) return el;
+    const masked = responses.map((qr: Record<string, unknown>) => {
+      const question = String(qr["question"] ?? qr["questionId"] ?? "");
+      const isPII = PII_QUESTION_PATTERNS.some((re) => re.test(question));
+      if (!isPII) return qr;
+      const out: Record<string, unknown> = { ...qr };
+      if (typeof out["answer"] === "string") out["answer"] = maskValue(out["answer"] as string);
+      if (out["response"] && typeof out["response"] === "object") {
+        const r = out["response"] as Record<string, unknown>;
+        if (typeof r["answer"] === "string") {
+          out["response"] = { ...r, answer: maskValue(r["answer"] as string) };
+        }
+      }
+      return out;
+    });
+    return { ...el, questionResponses: masked };
+  });
+}
 
 export async function getLeadgenResponses(args: {
   ad_account_id?: string;
@@ -63,6 +109,7 @@ export async function getLeadgenResponses(args: {
   submitted_after?: string;
   submitted_before?: string;
   page_size?: number;
+  redact_pii?: boolean;
 }) {
   const account = resolveAdAccount(args.ad_account_id);
   const params: Record<string, string | number> = {
@@ -81,7 +128,14 @@ export async function getLeadgenResponses(args: {
     const t = Date.parse(args.submitted_before);
     if (!Number.isNaN(t)) params["submittedAtTimeRange.end"] = t;
   }
-  return liGet("/leadFormResponses", params);
+  const result = await liGet<{ elements?: Array<Record<string, unknown>> }>(
+    "/leadFormResponses",
+    params
+  );
+  if (args.redact_pii !== false && Array.isArray(result.elements)) {
+    return { ...result, elements: redactResponses(result.elements) };
+  }
+  return result;
 }
 
 // ─── get-leadgen-form-performance ───────────────────────────────────────────
