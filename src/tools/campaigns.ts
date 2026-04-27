@@ -129,16 +129,16 @@ export async function listCreatives(args: {
   const account = resolveAdAccount(args.ad_account_id);
   const accountId = unwrapURN(account);
   const params: Record<string, string | number> = {
-    q: "criteria",
+    q: "search",
     pageSize: args.page_size ?? 50,
   };
   const criteria: string[] = [];
   if (args.campaign_id) {
     const camp = urn("sponsoredCampaign", args.campaign_id);
-    criteria.push(`campaigns:List(${camp})`);
+    criteria.push(`campaigns:(values:List(${camp}))`);
   }
   if (args.status) {
-    criteria.push(`intendedStatus:${args.status}`);
+    criteria.push(`intendedStatus:(values:List(${args.status}))`);
   }
   const rawParams =
     criteria.length > 0 ? { search: `(${criteria.join(",")})` } : undefined;
