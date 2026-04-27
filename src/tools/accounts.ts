@@ -25,10 +25,10 @@ export async function listAdAccounts(args: {
     q: "search",
     pageSize: args.page_size ?? 50,
   };
-  if (args.status) {
-    params["search"] = `(status:(values:List(${args.status})))`;
-  }
-  return liGet("/adAccounts", params);
+  const rawParams = args.status
+    ? { search: `(status:(values:List(${args.status})))` }
+    : undefined;
+  return liGet("/adAccounts", params, rawParams);
 }
 
 // ─── get-account ─────────────────────────────────────────────────────────────
