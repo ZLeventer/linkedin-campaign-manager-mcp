@@ -65,7 +65,7 @@ interface AnalyticsResponse {
   paging?: unknown;
 }
 
-export function buildAnalyticsUrl(opts: {
+function buildAnalyticsUrl(opts: {
   pivot: string;
   timeGranularity: string;
   start: ReturnType<typeof resolveDate>;
