@@ -92,13 +92,13 @@ export async function getConversionPerformance(args: {
     "q=statistics",
     "pivot=CONVERSION",
     "timeGranularity=ALL",
-    `dateRange=${encodeURIComponent(dateRangeParam(start, end))}`,
+    `dateRange=${dateRangeParam(start, end)}`,
     `fields=${fields}`,
   ];
   if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=${encodeURIComponent(`List(${campaignUrns.join(",")})`)}`);
+    qs.push(`campaigns=List(${campaignUrns.join(",")})`);
   } else if (accountUrn) {
-    qs.push(`accounts=${encodeURIComponent(`List(${accountUrn})`)}`);
+    qs.push(`accounts=List(${accountUrn})`);
   }
 
   const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;

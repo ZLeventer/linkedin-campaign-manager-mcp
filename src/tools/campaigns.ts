@@ -59,10 +59,9 @@ export async function listCampaigns(args: {
     const groupUrn = urn("sponsoredCampaignGroup", args.campaign_group_id);
     criteria.push(`campaignGroup:(values:List(${groupUrn}))`);
   }
-  if (criteria.length > 0) {
-    params["search"] = `(${criteria.join(",")})`;
-  }
-  return liGet(`/adAccounts/${accountId}/adCampaigns`, params);
+  const rawParams =
+    criteria.length > 0 ? { search: `(${criteria.join(",")})` } : undefined;
+  return liGet(`/adAccounts/${accountId}/adCampaigns`, params, rawParams);
 }
 
 // ─── get-campaign ────────────────────────────────────────────────────────────
@@ -103,10 +102,10 @@ export async function listCampaignGroups(args: {
     q: "search",
     pageSize: args.page_size ?? 50,
   };
-  if (args.status) {
-    params["search"] = `(status:(values:List(${args.status})))`;
-  }
-  return liGet(`/adAccounts/${accountId}/adCampaignGroups`, params);
+  const rawParams = args.status
+    ? { search: `(status:(values:List(${args.status})))` }
+    : undefined;
+  return liGet(`/adAccounts/${accountId}/adCampaignGroups`, params, rawParams);
 }
 
 // ─── list-creatives ─────────────────────────────────────────────────────────
@@ -141,10 +140,9 @@ export async function listCreatives(args: {
   if (args.status) {
     criteria.push(`intendedStatus:${args.status}`);
   }
-  if (criteria.length > 0) {
-    params["search"] = `(${criteria.join(",")})`;
-  }
-  return liGet(`/adAccounts/${accountId}/creatives`, params);
+  const rawParams =
+    criteria.length > 0 ? { search: `(${criteria.join(",")})` } : undefined;
+  return liGet(`/adAccounts/${accountId}/creatives`, params, rawParams);
 }
 
 // ─── get-creative ─────────────────────────────────────────────────────────────
