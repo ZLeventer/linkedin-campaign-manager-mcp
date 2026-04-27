@@ -78,13 +78,13 @@ function buildAnalyticsUrl(opts: {
     "q=statistics",
     `pivot=${opts.pivot}`,
     `timeGranularity=${opts.timeGranularity}`,
-    `dateRange=${encodeURIComponent(dateRangeParam(opts.start, opts.end))}`,
+    `dateRange=${dateRangeParam(opts.start, opts.end)}`,
     `fields=${opts.fields}`,
   ];
   if (opts.campaignUrns && opts.campaignUrns.length > 0) {
-    qs.push(`campaigns=${encodeURIComponent(listParam(opts.campaignUrns))}`);
+    qs.push(`campaigns=${listParam(opts.campaignUrns)}`);
   } else if (opts.accountUrn) {
-    qs.push(`accounts=${encodeURIComponent(listParam([opts.accountUrn]))}`);
+    qs.push(`accounts=${listParam([opts.accountUrn])}`);
   }
   return `${BASE_URL}/adAnalytics?${qs.join("&")}`;
 }
@@ -390,13 +390,6 @@ export async function getBudgetPacing(args: {
   const accountId = unwrapURN(account);
   const periodDays = args.period_days ?? 30;
 
-  // Fetch campaign list + spend in parallel
-  const campaignParams: Record<string, string | number> = {
-    q: "search",
-    pageSize: 100,
-    search: "(status:(values:List(ACTIVE)))",
-  };
-
   let campaigns: Array<Record<string, unknown>> = [];
   if (args.campaign_ids && args.campaign_ids.length > 0) {
     // Fetch each specified campaign
@@ -409,7 +402,8 @@ export async function getBudgetPacing(args: {
   } else {
     const res = await liGet<{ elements?: Array<Record<string, unknown>> }>(
       `/adAccounts/${accountId}/adCampaigns`,
-      campaignParams
+      { q: "search", pageSize: 100 },
+      { search: "(status:(values:List(ACTIVE)))" }
     );
     campaigns = res.elements ?? [];
   }

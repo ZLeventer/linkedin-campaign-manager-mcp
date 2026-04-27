@@ -35,10 +35,13 @@ async function liFetch<T>(method: string, url: string): Promise<T> {
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
-/** GET with auto-encoded query params. For simple list/filter endpoints. */
+/** GET with auto-encoded query params. For simple list/filter endpoints.
+ *  Pass `rawParams` for Rest.li values (e.g. `search=(status:(values:List(ACTIVE)))`)
+ *  that must NOT be percent-encoded — they're appended to the URL as-is. */
 export async function liGet<T = unknown>(
   path: string,
-  query?: Record<string, string | number | boolean | undefined>
+  query?: Record<string, string | number | boolean | undefined>,
+  rawParams?: Record<string, string>
 ): Promise<T> {
   const url = new URL(BASE_URL + path);
   if (query) {
@@ -46,7 +49,14 @@ export async function liGet<T = unknown>(
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
     }
   }
-  return liFetch<T>("GET", url.toString());
+  let finalUrl = url.toString();
+  if (rawParams) {
+    const raw = Object.entries(rawParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("&");
+    if (raw) finalUrl += (finalUrl.includes("?") ? "&" : "?") + raw;
+  }
+  return liFetch<T>("GET", finalUrl);
 }
 
 /** GET with a fully-constructed URL. Use for endpoints (adAnalytics) that need
