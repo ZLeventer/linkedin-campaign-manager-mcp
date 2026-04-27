@@ -33,7 +33,7 @@ export async function getLeadgenForms(args: {
   const params: Record<string, string | number> = {
     q: "account",
     account,
-    count: args.page_size ?? 50,
+    pageSize: args.page_size ?? 50,
   };
   if (args.state) {
     params["state"] = args.state;
