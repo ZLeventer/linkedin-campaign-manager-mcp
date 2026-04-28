@@ -1,8 +1,8 @@
 {
   "name": "linkedin-campaign-manager-mcp",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "mcpName": "io.github.ZLeventer/linkedin-campaign-manager-mcp",
-  "description": "MCP server for the LinkedIn Marketing API — 19 tools for ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, conversions, lead gen forms, audiences, and targeting facets.",
+  "description": "MCP server for the LinkedIn Marketing API — 25 tools for ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, conversions, lead gen forms, audiences, targeting facets, reach/frequency, organic post performance, audience forecasting, creative comparison, and auth status.",
   "type": "module",
   "bin": {
     "linkedin-campaign-manager-mcp": "dist/index.js"

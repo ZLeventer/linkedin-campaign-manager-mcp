@@ -33,10 +33,16 @@ import {
   getLeadgenResponses, getLeadgenResponsesSchema,
   getLeadgenFormPerformance, getLeadgenFormPerformanceSchema,
 } from "./tools/leadgen.js";
+import { getReachFrequency, getReachFrequencySchema } from "./tools/reach.js";
+import { getTargetingCriteria, getTargetingCriteriaSchema } from "./tools/targeting.js";
+import { getOrganicPostPerformance, getOrganicPostPerformanceSchema } from "./tools/organic.js";
+import { forecastAudience, forecastAudienceSchema } from "./tools/forecast.js";
+import { compareCreatives, compareCreativesSchema } from "./tools/compare.js";
+import { checkAuthStatus, checkAuthStatusSchema } from "./tools/authstatus.js";
 
 const server = new McpServer({
   name: "linkedin-campaign-manager-mcp",
-  version: "1.0.0",
+  version: "1.2.0",
 });
 
 function ok(data: unknown) {
@@ -196,6 +202,60 @@ server.tool(
   "Fetch LinkedIn Lead Gen Form performance analytics broken down by creative. Returns impressions, clicks, Lead Gen Form opens (oneClickLeadFormOpens), lead submissions (oneClickLeads), spend, and computed metrics: formOpenRate (opens / clicks), leadSubmitRate (submissions / opens), costPerLead (spend / submissions), and CTR. Use to identify high-performing LGF creatives, diagnose drop-off between form open and submission, or compare cost-per-lead across campaigns.",
   getLeadgenFormPerformanceSchema,
   async (args) => { try { return ok(await getLeadgenFormPerformance(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Reach & Frequency ───────────────────────────────────────────────────────
+
+server.tool(
+  "li_get_reach_frequency",
+  "Fetch reach and frequency metrics for LinkedIn campaigns. Returns approximateUniqueImpressions (unique members reached), impressions, and computed frequency (avg times each member saw your ad) and cost-per-reach per campaign or creative. Useful for diagnosing ad fatigue (frequency > 5–7 in 30 days typically hurts CTR), planning brand awareness budgets, and comparing reach efficiency across campaigns. LinkedIn rounds uniqueImpressions for member privacy.",
+  getReachFrequencySchema,
+  async (args) => { try { return ok(await getReachFrequency(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Targeting Criteria ──────────────────────────────────────────────────────
+
+server.tool(
+  "li_get_targeting_criteria",
+  "Read a campaign's full targeting configuration and resolve URN-based facets to human-readable labels. Decodes job functions (urn:li:function:18 → Operations), seniorities, industries, and geo URNs by calling the LinkedIn reference data endpoints. Returns both a resolved (human-readable) view and the raw targetingCriteria object. Useful for targeting audits, documentation, and verifying that a campaign is hitting the intended personas before launch.",
+  getTargetingCriteriaSchema,
+  async (args) => { try { return ok(await getTargetingCriteria(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Organic Post Performance ────────────────────────────────────────────────
+
+server.tool(
+  "li_get_organic_post_performance",
+  "Fetch organic LinkedIn Company Page post performance. Returns recent UGC posts with per-post engagement statistics: impressions, clicks, reactions, shares, comments. Resolves the organization from the ad account's referenceOrganization if not passed explicitly. NOTE: Requires the r_organization_social OAuth scope — if your LinkedIn app was approved only for Marketing Developer Platform, re-authorize after adding this scope in the LinkedIn App portal.",
+  getOrganicPostPerformanceSchema,
+  async (args) => { try { return ok(await getOrganicPostPerformance(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Audience Forecast ───────────────────────────────────────────────────────
+
+server.tool(
+  "li_forecast_audience",
+  "Estimate the reachable audience size for a campaign's targeting criteria using LinkedIn's audienceCounts endpoint. Pass a campaign_id to use its existing targetingCriteria as the input. Returns LinkedIn's estimated member count matching those criteria. Useful for validating that a targeting configuration will reach enough members before launch, or for comparing audience size before and after tightening/broadening targeting. Counts are rounded by LinkedIn for privacy.",
+  forecastAudienceSchema,
+  async (args) => { try { return ok(await forecastAudience(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Creative Comparison ─────────────────────────────────────────────────────
+
+server.tool(
+  "li_compare_creatives",
+  "Compare 2–10 LinkedIn ad creatives on CTR, CPL, CPC, and conversion rate over a date range. Runs two-proportion z-tests to determine whether performance differences are statistically significant (95% and 99% confidence levels). Returns a ranked table, per-creative metrics, and pairwise comparison results with a winner declaration. Use when deciding which creative to pause, scale, or iterate on. Requires ~1,000+ impressions per creative for reliable significance.",
+  compareCreativesSchema,
+  async (args) => { try { return ok(await compareCreatives(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Auth Status ─────────────────────────────────────────────────────────────
+
+server.tool(
+  "li_check_auth_status",
+  "Check the status of your LinkedIn OAuth tokens without making an API call. Returns whether the access token and refresh token are valid, their exact expiry timestamps, days remaining, the granted OAuth scopes, and which environment variables (LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, LINKEDIN_DEFAULT_AD_ACCOUNT, LINKEDIN_API_VERSION) are configured. Run this first when troubleshooting 401/403 errors or when setting up the server on a new machine.",
+  checkAuthStatusSchema,
+  async (args) => { try { return ok(await checkAuthStatus(args as Record<string, never>)); } catch (e) { return err(e); } }
 );
 
 const transport = new StdioServerTransport();
