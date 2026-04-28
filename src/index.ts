@@ -39,6 +39,16 @@ import { getOrganicPostPerformance, getOrganicPostPerformanceSchema } from "./to
 import { forecastAudience, forecastAudienceSchema } from "./tools/forecast.js";
 import { compareCreatives, compareCreativesSchema } from "./tools/compare.js";
 import { checkAuthStatus, checkAuthStatusSchema } from "./tools/authstatus.js";
+import { accountHealthSnapshot, accountHealthSnapshotSchema } from "./tools/health.js";
+import { namingConventionAudit, namingConventionAuditSchema } from "./tools/audit.js";
+import { creativeInventory, creativeInventorySchema } from "./tools/creatives_inventory.js";
+import { demographicRollup, demographicRollupSchema } from "./tools/demographics_rollup.js";
+import { underperformerFinder, underperformerFinderSchema } from "./tools/underperformers.js";
+import {
+  saveAccountSnapshot, saveAccountSnapshotSchema,
+  accountSnapshotDiff, accountSnapshotDiffSchema,
+  listSnapshots, listSnapshotsSchema,
+} from "./tools/snapshots.js";
 
 const server = new McpServer({
   name: "linkedin-campaign-manager-mcp",
@@ -247,6 +257,74 @@ server.tool(
   "Compare 2–10 LinkedIn ad creatives on CTR, CPL, CPC, and conversion rate over a date range. Runs two-proportion z-tests to determine whether performance differences are statistically significant (95% and 99% confidence levels). Returns a ranked table, per-creative metrics, and pairwise comparison results with a winner declaration. Use when deciding which creative to pause, scale, or iterate on. Requires ~1,000+ impressions per creative for reliable significance.",
   compareCreativesSchema,
   async (args) => { try { return ok(await compareCreatives(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Account Health Snapshot (Tier 1 #1) ─────────────────────────────────────
+
+server.tool(
+  "li_account_health_snapshot",
+  "One-shot health dashboard for a LinkedIn ad account: spend, impressions, clicks, leads totals; per-campaign metrics (CPL, CTR, utilization); top/bottom campaigns by CPL and CTR; CPL outlier distribution; and a prioritized alert list (high budget utilization, zero-delivery active campaigns, CPL outliers >Nσ above account mean, spend-with-no-leads). Replaces the multi-tab manual sweep through Campaign Manager. Default lookback: 30 days. Read-only.",
+  accountHealthSnapshotSchema,
+  async (args) => { try { return ok(await accountHealthSnapshot(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Naming Convention Audit (Tier 1 #2) ─────────────────────────────────────
+
+server.tool(
+  "li_naming_convention_audit",
+  "Audit a LinkedIn ad account for hygiene violations across campaigns, groups, and creatives. Checks (configurable): name regex match, campaign assigned to a campaign group, conversion event attached, and destination URLs include utm_source/medium/campaign. Returns violation list grouped by rule plus per-entity detail. Replaces the manual scroll through the campaign list. Read-only.",
+  namingConventionAuditSchema,
+  async (args) => { try { return ok(await namingConventionAudit(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Creative Inventory + Fatigue (Tier 1 #3) ────────────────────────────────
+
+server.tool(
+  "li_creative_inventory",
+  "Account-wide creative inventory with fatigue scoring. For every creative that has delivered: lifetime impressions/clicks/spend/leads/CTR plus a fatigue score computed by comparing CTR in the last N days vs. the prior N days. Flags creatives whose recent CTR has dropped ≥threshold% relative to prior — the canonical 'this ad is wearing out' signal. UI shows per-campaign creative lists with no fatigue calc. Read-only. Default fatigue window: 7 days, threshold: 25% relative CTR drop.",
+  creativeInventorySchema,
+  async (args) => { try { return ok(await creativeInventory(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Demographic Rollup (Tier 1 #4) ──────────────────────────────────────────
+
+server.tool(
+  "li_demographic_rollup",
+  "Aggregate a demographic dimension (job title / function / seniority / company / size / industry / country / region) across multiple campaigns or the whole account. Returns top-N values sorted by spend, with impressions, clicks, leads, CTR, CPL, and share-of-spend per value. UI demographics are per-campaign with no rollup. Read-only.",
+  demographicRollupSchema,
+  async (args) => { try { return ok(await demographicRollup(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Underperformer Finder (Tier 1 #5) ───────────────────────────────────────
+
+server.tool(
+  "li_underperformer_finder",
+  "Scan all ACTIVE campaigns and flag underperformers by configurable thresholds (CTR floor, CPL ceiling, spend-with-no-leads). Filters out low-data campaigns (min_spend / min_impressions guards) so you don't get noise. Returns flagged campaigns with reasons + recommended next actions (refresh creative, tighten targeting, audit conversion tracking). Read-only.",
+  underperformerFinderSchema,
+  async (args) => { try { return ok(await underperformerFinder(args)); } catch (e) { return err(e); } }
+);
+
+// ─── Snapshots (Tier 1 #6) ───────────────────────────────────────────────────
+
+server.tool(
+  "li_save_account_snapshot",
+  "Capture the current state of an ad account (campaigns, groups, creatives — id/name/status/budget/targeting) and write it to snapshots/ in this MCP repo. Run nightly (or manually) to build a history. Pairs with li_account_snapshot_diff to answer 'what changed since last week'. Read-only against LinkedIn — only writes to local disk.",
+  saveAccountSnapshotSchema,
+  async (args) => { try { return ok(await saveAccountSnapshot(args)); } catch (e) { return err(e); } }
+);
+
+server.tool(
+  "li_account_snapshot_diff",
+  "Diff two saved snapshots (or the most-recent vs. live state via take_live_snapshot=true) and return added / removed / changed campaigns, campaign groups, and creatives. Surfaces budget changes, status flips, targeting edits, and creative swaps with before/after values. The UI changelog is unfilterable noise — this is the curated week-over-week diff. Read-only.",
+  accountSnapshotDiffSchema,
+  async (args) => { try { return ok(await accountSnapshotDiff(args)); } catch (e) { return err(e); } }
+);
+
+server.tool(
+  "li_list_snapshots",
+  "List all saved snapshots for an ad account. Use to find specific snapshot filenames before passing them to li_account_snapshot_diff.",
+  listSnapshotsSchema,
+  async (args) => { try { return ok(await listSnapshots(args)); } catch (e) { return err(e); } }
 );
 
 // ─── Auth Status ─────────────────────────────────────────────────────────────
