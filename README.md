@@ -130,7 +130,7 @@ Add to `~/.claude.json` under `mcpServers`:
         "LINKEDIN_CLIENT_SECRET": "your_client_secret",
         "LINKEDIN_TOKEN_PATH": "/absolute/path/to/token.json",
         "LINKEDIN_DEFAULT_AD_ACCOUNT": "123456789",
-        "LINKEDIN_API_VERSION": "202504"
+        "LINKEDIN_API_VERSION": "202604"
       }
     }
   }
@@ -169,7 +169,7 @@ Restart Claude Code. The 19 tools appear under the `linkedin` server.
 | `LINKEDIN_TOKEN_PATH` | No | `./token.json` | Path to read/write the token file |
 | `LINKEDIN_DEFAULT_AD_ACCOUNT` | Recommended | — | Numeric account ID; tools fall back to this when `ad_account_id` is not passed |
 | `LINKEDIN_OAUTH_PORT` | No | `53123` | Loopback port for OAuth redirect |
-| `LINKEDIN_API_VERSION` | No | `202504` | LinkedIn Rosetta API version (YYYYMM) |
+| `LINKEDIN_API_VERSION` | No | `202604` | LinkedIn Rosetta API version (YYYYMM) |
 
 ---
 
@@ -199,7 +199,7 @@ Default range: `28daysAgo` → `yesterday`.
 
 ### API version churn
 
-LinkedIn Rosetta uses monthly versions (`202504` = April 2025). Versions deprecate ~12 months after release — you'll get `410 Gone` errors when that happens. Bump `LINKEDIN_API_VERSION` quarterly. See the [versioning docs](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
+LinkedIn Rosetta uses monthly versions (\`202604\` = April 2026). Versions deprecate ~12 months after release — you'll get `410 Gone` errors when that happens. Bump `LINKEDIN_API_VERSION` quarterly. See the [versioning docs](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
 
 ### Analytics query shape
 
