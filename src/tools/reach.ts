@@ -52,17 +52,18 @@ export async function getReachFrequency(args: {
       ? undefined
       : resolveAdAccount(args.ad_account_id);
 
+  const encUrn = (u: string) => u.replace(/:/g, "%3A");
   const qs: string[] = [
     "q=statistics",
-    `pivot=${pivot}`,
+    `pivots=List(${pivot})`,
     `timeGranularity=${timeGranularity}`,
     `dateRange=${dateRangeParam(start, end)}`,
     `fields=${fields}`,
   ];
   if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=${listParam(campaignUrns)}`);
+    qs.push(`campaigns=${listParam(campaignUrns.map(encUrn))}`);
   } else if (accountUrn) {
-    qs.push(`accounts=${listParam([accountUrn])}`);
+    qs.push(`accounts=${listParam([encUrn(accountUrn)])}`);
   }
   const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;
 

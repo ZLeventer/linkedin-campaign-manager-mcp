@@ -128,9 +128,10 @@ export async function listCreatives(args: {
 }) {
   const account = resolveAdAccount(args.ad_account_id);
   const accountId = unwrapURN(account);
+  // 202604 API: q=criteria with count (not q=search with pageSize)
   const params: Record<string, string | number> = {
-    q: "search",
-    pageSize: args.page_size ?? 50,
+    q: "criteria",
+    count: args.page_size ?? 50,
   };
   const criteria: string[] = [];
   if (args.campaign_id) {

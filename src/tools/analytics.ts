@@ -44,17 +44,23 @@ const PERF_PIVOTS = ["CAMPAIGN", "CAMPAIGN_GROUP", "CREATIVE", "ACCOUNT"] as con
 const TIME_GRANULARITIES = ["ALL", "DAILY", "MONTHLY", "YEARLY"] as const;
 
 const DEMO_PIVOTS = [
-  "MEMBER_COMPANY",
-  "MEMBER_COMPANY_SIZE",
-  "MEMBER_COUNTRY_V2",
-  "MEMBER_INDUSTRY",
-  "MEMBER_JOB_FUNCTION",
-  "MEMBER_JOB_TITLE",
-  "MEMBER_REGION_V2",
-  "MEMBER_SENIORITY",
+  "COMPANY",
+  "COMPANY_SIZE",
+  "COUNTRY",
+  "INDUSTRY",
+  "JOB_FUNCTION",
+  "JOB_TITLE",
+  "REGION",
+  "JOB_SENIORITY",
+  "IMPRESSION_DEVICE_TYPE",
+  "SERVING_LOCATION",
 ] as const;
 
 const COMPARISONS = ["wow", "mom", "yoy"] as const;
+
+function encodeUrn(u: string): string {
+  return u.replace(/:/g, "%3A");
+}
 
 interface AnalyticsElement extends Record<string, unknown> {
   pivotValues?: string[];
@@ -76,15 +82,15 @@ function buildAnalyticsUrl(opts: {
 }): string {
   const qs: string[] = [
     "q=statistics",
-    `pivot=${opts.pivot}`,
+    `pivots=List(${opts.pivot})`,
     `timeGranularity=${opts.timeGranularity}`,
     `dateRange=${dateRangeParam(opts.start, opts.end)}`,
     `fields=${opts.fields}`,
   ];
   if (opts.campaignUrns && opts.campaignUrns.length > 0) {
-    qs.push(`campaigns=${listParam(opts.campaignUrns)}`);
+    qs.push(`campaigns=${listParam(opts.campaignUrns.map(encodeUrn))}`);
   } else if (opts.accountUrn) {
-    qs.push(`accounts=${listParam([opts.accountUrn])}`);
+    qs.push(`accounts=${listParam([encodeUrn(opts.accountUrn)])}`);
   }
   return `${BASE_URL}/adAnalytics?${qs.join("&")}`;
 }
@@ -144,9 +150,10 @@ export const getDemographicsReportSchema = {
   pivot: z
     .enum(DEMO_PIVOTS)
     .describe(
-      "Demographic dimension to break down by. MEMBER_JOB_TITLE / MEMBER_JOB_FUNCTION / MEMBER_SENIORITY " +
-      "are useful for persona fit; MEMBER_COMPANY / MEMBER_COMPANY_SIZE for ABM audience analysis; " +
-      "MEMBER_INDUSTRY for vertical benchmarking; MEMBER_COUNTRY_V2 / MEMBER_REGION_V2 for geo reporting."
+      "Demographic dimension to break down by. JOB_TITLE / JOB_FUNCTION / JOB_SENIORITY " +
+      "are useful for persona fit; COMPANY / COMPANY_SIZE for ABM audience analysis; " +
+      "INDUSTRY for vertical benchmarking; COUNTRY / REGION for geo reporting; " +
+      "IMPRESSION_DEVICE_TYPE / SERVING_LOCATION for delivery insights."
     ),
   campaign_ids: z.array(z.string()).optional(),
   ad_account_id: z.string().optional(),
@@ -426,52 +433,47 @@ export async function getBudgetPacing(args: {
     campaigns = res.elements ?? [];
   }
 
-  // Fetch spend for the period
+  // Fetch spend per campaign individually — the 202604 API no longer returns
+  // pivotValues in adAnalytics responses, so batch queries can't be mapped back.
   const spendStart = `${periodDays}daysAgo`;
-  const campaignUrns = campaigns.map((c) => {
-    const id = c["id"] as string | undefined ?? "";
-    return urn("sponsoredCampaign", id);
-  });
-
   const start = resolveDate(spendStart);
   const end = resolveDate(DEFAULT_END);
-  const spendUrl = buildAnalyticsUrl({
-    pivot: "CAMPAIGN",
-    timeGranularity: "ALL",
-    start,
-    end,
-    fields: "costInUsd,costInLocalCurrency",
-    campaignUrns: campaignUrns.filter(Boolean),
-    accountUrn: undefined,
-  });
 
-  const spendData = await liGetRaw<AnalyticsResponse>(spendUrl);
-  // Index spend by both full URN and bare ID so we don't silently miss when
-  // LinkedIn returns pivotValues in a slightly different shape than constructed.
-  const spendMap = new Map<string, { usd: number; local: number }>();
-  const unmatchedPivots: string[] = [];
-  for (const row of spendData.elements ?? []) {
-    const key = (row.pivotValues?.[0] ?? "") as string;
-    const value = {
-      usd: Number(row["costInUsd"] ?? 0),
-      local: Number(row["costInLocalCurrency"] ?? 0),
-    };
-    spendMap.set(key, value);
-    spendMap.set(unwrapURN(key), value);
-    unmatchedPivots.push(key);
-  }
+  const spendResults = await Promise.all(
+    campaigns.map(async (c) => {
+      const id = (c["id"] as string | undefined) ?? "";
+      const campaignUrn = urn("sponsoredCampaign", id);
+      try {
+        const spendUrl = buildAnalyticsUrl({
+          pivot: "CAMPAIGN",
+          timeGranularity: "ALL",
+          start,
+          end,
+          fields: "costInUsd,costInLocalCurrency",
+          campaignUrns: [campaignUrn],
+          accountUrn: undefined,
+        });
+        const data = await liGetRaw<AnalyticsResponse>(spendUrl);
+        const row = data.elements?.[0];
+        return {
+          id,
+          usd: Number(row?.["costInUsd"] ?? 0),
+          local: Number(row?.["costInLocalCurrency"] ?? 0),
+        };
+      } catch {
+        return { id, usd: 0, local: 0 };
+      }
+    })
+  );
+
+  const spendMap = new Map<string, { usd: number; local: number }>(
+    spendResults.map((r) => [r.id, { usd: r.usd, local: r.local }])
+  );
 
   const pacing = campaigns.map((c) => {
     const id = (c["id"] as string) ?? "";
     const campaignUrn = urn("sponsoredCampaign", id);
-    const spend =
-      spendMap.get(campaignUrn) ?? spendMap.get(id) ?? { usd: 0, local: 0 };
-    if (!spendMap.has(campaignUrn) && !spendMap.has(id) && spendData.elements?.length) {
-      console.error(
-        `[linkedin-mcp] getBudgetPacing: no spend row matched campaign ${campaignUrn}. ` +
-        `Returned pivot keys: ${unmatchedPivots.slice(0, 3).join(", ")}${unmatchedPivots.length > 3 ? "..." : ""}`
-      );
-    }
+    const spend = spendMap.get(id) ?? { usd: 0, local: 0 };
 
     // totalBudget is a {amount, currencyCode} object
     const totalBudget = c["totalBudget"] as { amount?: string; currencyCode?: string } | undefined;

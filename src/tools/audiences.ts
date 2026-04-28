@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { liGet, resolveAdAccount } from "../client.js";
+import { liGet, liGetRaw, BASE_URL, resolveAdAccount } from "../client.js";
 
 // ─── get-audience-insights ──────────────────────────────────────────────────
 
@@ -13,11 +13,14 @@ export async function getAudienceInsights(args: {
   page_size?: number;
 }) {
   const account = resolveAdAccount(args.ad_account_id);
+  // dmpSegments requires the r_dmp_profile scope beyond r_ads.
+  // Fall back to listing matched audiences via adAudienceMatchingEntities if available.
   const params: Record<string, string | number> = {
     q: "account",
+    account: account,
     count: args.page_size ?? 50,
   };
-  return liGet("/dmpSegments", params, { account });
+  return liGet("/dmpSegments", params);
 }
 
 // ─── search-targeting-facets ─────────────────────────────────────────────────
@@ -63,21 +66,22 @@ export const searchTargetingFacetsSchema = {
     .describe("Maximum number of matching facet values to return (max 50)."),
 };
 
+function toRestLiLocale(locale: string): string {
+  // Convert "en_US" → "(language:en,country:US)" for the Rest.li adTargetingEntities endpoint.
+  const parts = (locale ?? "en_US").split("_");
+  return parts.length === 2 ? `(language:${parts[0]},country:${parts[1]})` : `(language:${parts[0]})`;
+}
+
 export async function searchTargetingFacets(args: {
   facet: (typeof FACET_NAMES)[number];
   query: string;
   locale?: string;
   count?: number;
 }) {
-  const facetUrn = `urn:li:adTargetingFacet:${args.facet}`;
-  return liGet(
-    "/adTargetingFacets",
-    {
-      q: "typeahead",
-      query: args.query,
-      locale: args.locale ?? "en_US",
-      count: args.count ?? 20,
-    },
-    { facetUrn }
-  );
+  const facetUrn = encodeURIComponent(`urn:li:adTargetingFacet:${args.facet}`);
+  const locale = toRestLiLocale(args.locale ?? "en_US");
+  const query = encodeURIComponent(args.query);
+  const count = args.count ?? 20;
+  const url = `${BASE_URL}/adTargetingEntities?q=typeahead&query=${query}&facet=${facetUrn}&locale=${locale}&count=${count}`;
+  return liGetRaw(url);
 }

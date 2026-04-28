@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { liGet, resolveAdAccount, unwrapURN, urn } from "../client.js";
+import { liGet, resolveAdAccount, unwrapURN } from "../client.js";
 
 export const getTargetingCriteriaSchema = {
   campaign_id: z
@@ -15,27 +15,87 @@ export const getTargetingCriteriaSchema = {
     ),
 };
 
+// Industry IDs absent from /industries/{id} (newer or deprecated taxonomy entries).
+// Populated via adTargetingEntities reverse-search — add new entries as encountered.
+const INDUSTRY_FALLBACK = new Map<string, string>([
+  ["332", "Oil, Gas, and Mining"],
+  ["598", "Apparel Manufacturing"],
+  ["1339", "Food and Beverage Retail"],
+  ["1757", "Real Estate and Equipment Rental Services"],
+  ["1759", "Leasing Residential Real Estate"],
+  ["1770", "Real Estate Agents and Brokers"],
+  ["1810", "Professional Services"],
+  ["1862", "Marketing Services"],
+  ["1999", "Education"],
+  ["2074", "Home Health Care Services"],
+  ["2115", "Community Services"],
+  ["2130", "Performing Arts and Spectator Sports"],
+  ["2391", "Military and International Affairs"],
+  ["3133", "Media and Telecommunications"],
+]);
+
+function localizedName(data: { name?: { localized?: { en_US?: string }; value?: string } } | null): string | null {
+  return data?.name?.localized?.en_US ?? data?.name?.value ?? null;
+}
+
+function decodeStaffCountRange(urn: string): string | null {
+  const m = urn.match(/\((\d+),(\d+)\)/);
+  if (!m) return null;
+  const [, lo, hi] = m;
+  return lo === hi ? `${lo} employee` : `${lo}–${hi} employees`;
+}
+
+function decodeLocale(urn: string): string {
+  const tag = urn.replace("urn:li:locale:", "");
+  const [lang, country] = tag.split("_");
+  return country ? `${lang.toUpperCase()} (${country})` : lang.toUpperCase();
+}
+
 async function resolveUrn(u: string): Promise<string> {
+  // Static decodes — no API call needed
+  if (u.startsWith("urn:li:staffCountRange:")) {
+    return decodeStaffCountRange(u) ?? u;
+  }
+  if (u.startsWith("urn:li:locale:")) {
+    return decodeLocale(u);
+  }
   try {
-    let m = u.match(/^urn:li:function:(\d+)$/);
+    let m = u.match(/^urn:li:title:(\d+)$/);
     if (m) {
-      const data = await liGet<{ name?: { value?: string } }>(`/functions/${m[1]}`);
-      return data?.name?.value ?? u;
+      const data = await liGet<{ name?: { localized?: { en_US?: string }; value?: string } }>(`/titles/${m[1]}`);
+      return localizedName(data) ?? u;
+    }
+    m = u.match(/^urn:li:function:(\d+)$/);
+    if (m) {
+      const data = await liGet<{ name?: { localized?: { en_US?: string }; value?: string } }>(`/functions/${m[1]}`);
+      return localizedName(data) ?? u;
     }
     m = u.match(/^urn:li:seniority[:/](\d+)$/);
     if (m) {
-      const data = await liGet<{ name?: { value?: string } }>(`/seniorities/${m[1]}`);
-      return data?.name?.value ?? u;
+      const data = await liGet<{ name?: { localized?: { en_US?: string }; value?: string } }>(`/seniorities/${m[1]}`);
+      return localizedName(data) ?? u;
     }
     m = u.match(/^urn:li:industry:(\d+)$/);
     if (m) {
-      const data = await liGet<{ name?: { value?: string } }>(`/industries/${m[1]}`);
-      return data?.name?.value ?? u;
+      const fallback = INDUSTRY_FALLBACK.get(m[1]);
+      if (fallback) return fallback;
+      const data = await liGet<{ name?: { localized?: { en_US?: string }; value?: string } }>(`/industries/${m[1]}`);
+      return localizedName(data) ?? u;
     }
     m = u.match(/^urn:li:geo:(\d+)$/);
     if (m) {
-      const data = await liGet<{ defaultLocalizedName?: { value?: string } }>(`/geo/${m[1]}`);
-      return data?.defaultLocalizedName?.value ?? u;
+      const data = await liGet<{ defaultLocalizedName?: { value?: string }; name?: { localized?: { en_US?: string }; value?: string } }>(`/geo/${m[1]}`);
+      return data?.defaultLocalizedName?.value ?? localizedName(data) ?? u;
+    }
+    m = u.match(/^urn:li:adSegment:(\d+)$/);
+    if (m) {
+      const data = await liGet<{ name?: string }>(`/adSegments/${m[1]}`);
+      return data?.name ? `Audience: ${data.name}` : u;
+    }
+    m = u.match(/^urn:li:organization:(\d+)$/);
+    if (m) {
+      // r_organization_social scope required — label with ID so it's not fully opaque
+      return `Company (org:${m[1]})`;
     }
   } catch {
     // Return raw URN if resolution fails (scope issue, 404, etc.)

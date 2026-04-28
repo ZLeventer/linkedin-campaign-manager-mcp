@@ -8,7 +8,7 @@
 
 **MCP server for the LinkedIn Marketing API — query campaigns, performance, and Lead Gen Forms from Claude in plain English.**
 
-19 read-only tools covering ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, period comparisons, conversions, Lead Gen Forms, audiences, and targeting facets. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns on LinkedIn.
+25 read-only tools covering ad accounts, campaigns, creatives, performance analytics, demographics, video analytics, budget pacing, period comparisons, conversions, Lead Gen Forms, audiences, targeting criteria inspection, reach/frequency, audience forecasting, creative A/B testing, organic post performance, and auth diagnostics. Built for B2B paid social teams running Sponsored Content, Lead Gen Forms, and account-based campaigns on LinkedIn.
 
 ---
 
@@ -31,6 +31,10 @@ Once installed, ask Claude things like:
 - *"Show the video completion funnel for our awareness campaign — where are people dropping off?"*
 - *"Are any campaigns at risk of overspending? Show budget pacing across all active ones."*
 - *"Pull yesterday's Lead Gen Form responses so I can spot-check them against Marketo."*
+- *"What's the targeting on the WS Brand Visibility campaign — what job functions, seniorities, and industries are we hitting?"*
+- *"Check our ad frequency across active campaigns — any showing fatigue (>6 exposures/member)?"*
+- *"How many members does our current Warehouse Solutions targeting reach? Would loosening seniority from Director+ to Manager+ meaningfully expand it?"*
+- *"Compare the three WS eBook creatives — which has the best CTR and is the difference statistically significant?"*
 
 ---
 
@@ -63,6 +67,12 @@ Once installed, ask Claude things like:
 | `li_get_leadgen_forms` | Lead Gen Forms + question config + state. |
 | `li_get_leadgen_responses` | Actual form submissions with PII (name, email, company, job title). |
 | `li_get_leadgen_form_performance` | LGF metrics per creative: form open rate, submit rate, cost per lead. |
+| `li_get_reach_frequency` | Unique members reached, impressions, frequency (avg exposures/member), and cost-per-reach. Diagnose ad fatigue and compare reach efficiency across campaigns. |
+| `li_get_targeting_criteria` | Read a campaign's full targeting config and resolve URNs to human-readable labels (job functions, seniorities, industries, geos, audiences). Returns both resolved and raw views. |
+| `li_get_organic_post_performance` | Organic Company Page post stats: impressions, clicks, reactions, shares, comments. Requires `r_organization_social` scope. |
+| `li_forecast_audience` | Estimate reachable audience size for a campaign's targeting criteria using LinkedIn's audienceCounts endpoint. |
+| `li_compare_creatives` | Compare 2–10 creatives on CTR, CPL, CPC, and conversion rate with pairwise z-tests (95%/99% confidence). Returns ranked table and winner declarations. |
+| `li_check_auth_status` | Token health check: expiry timestamps, days remaining, granted OAuth scopes, and env var config. Run first when troubleshooting 401/403 errors. |
 
 ---
 
@@ -156,7 +166,7 @@ Or if running from source:
 }
 ```
 
-Restart Claude Code. The 19 tools appear under the `linkedin` server.
+Restart Claude Code. The 25 tools appear under the `linkedin` server.
 
 ---
 

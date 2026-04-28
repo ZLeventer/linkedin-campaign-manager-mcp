@@ -88,17 +88,18 @@ export async function getConversionPerformance(args: {
       ? undefined
       : resolveAdAccount(args.ad_account_id);
 
+  const encUrn = (u: string) => u.replace(/:/g, "%3A");
   const qs: string[] = [
     "q=statistics",
-    "pivot=CONVERSION",
+    "pivots=List(CONVERSION)",
     "timeGranularity=ALL",
     `dateRange=${dateRangeParam(start, end)}`,
     `fields=${fields}`,
   ];
   if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=List(${campaignUrns.join(",")})`);
+    qs.push(`campaigns=List(${campaignUrns.map(encUrn).join(",")})`);
   } else if (accountUrn) {
-    qs.push(`accounts=List(${accountUrn})`);
+    qs.push(`accounts=List(${encUrn(accountUrn)})`);
   }
 
   const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;

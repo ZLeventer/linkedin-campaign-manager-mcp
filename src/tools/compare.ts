@@ -89,37 +89,38 @@ export async function compareCreatives(args: {
   const fields =
     "impressions,clicks,costInUsd,oneClickLeads,externalWebsiteConversions,landingPageClicks";
 
-  const qs: string[] = [
-    "q=statistics",
-    "pivot=CREATIVE",
-    "timeGranularity=ALL",
-    `dateRange=${dateRangeParam(start, end)}`,
-    `fields=${fields}`,
-  ];
-  if (campaignUrns && campaignUrns.length > 0) {
-    qs.push(`campaigns=${listParam(campaignUrns)}`);
-  } else if (accountUrn) {
-    qs.push(`accounts=${listParam([accountUrn])}`);
-  }
-  const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;
-
-  const raw = await liGetRaw<{ elements?: AnalyticsRow[] }>(url);
-
-  // Index analytics by creative URN and bare ID
-  const dataMap = new Map<string, AnalyticsRow>();
-  for (const row of raw.elements ?? []) {
-    const pv = row.pivotValues?.[0] ?? "";
-    if (pv) {
-      dataMap.set(pv, row);
-      dataMap.set(pv.split(":").pop() ?? "", row);
-    }
-  }
-
+  const encUrn = (u: string) => u.replace(/:/g, "%3A");
   const creativeUrns = args.creative_ids.map((id) => urn("sponsoredCreative", id));
 
+  // Query each creative individually — the 202604 API no longer returns pivotValues,
+  // so batch queries can't be mapped back to specific creatives.
+  const rawRows = await Promise.all(
+    creativeUrns.map(async (creativeUrn) => {
+      const qs: string[] = [
+        "q=statistics",
+        "pivots=List(CREATIVE)",
+        "timeGranularity=ALL",
+        `dateRange=${dateRangeParam(start, end)}`,
+        `fields=${fields}`,
+      ];
+      if (campaignUrns && campaignUrns.length > 0) {
+        qs.push(`campaigns=${listParam(campaignUrns.map(encUrn))}`);
+      } else if (accountUrn) {
+        qs.push(`accounts=${listParam([encUrn(accountUrn)])}`);
+      }
+      qs.push(`creatives=List(${encUrn(creativeUrn)})`);
+      const url = `${BASE_URL}/adAnalytics?${qs.join("&")}`;
+      try {
+        const data = await liGetRaw<{ elements?: AnalyticsRow[] }>(url);
+        return data.elements?.[0] ?? {};
+      } catch {
+        return {};
+      }
+    })
+  );
+
   const stats = creativeUrns.map((creativeUrn, i) => {
-    const bareId = creativeUrn.split(":").pop() ?? "";
-    const row = dataMap.get(creativeUrn) ?? dataMap.get(bareId) ?? {};
+    const row = rawRows[i] ?? {};
     const impressions = Number(row["impressions"] ?? 0);
     const clicks = Number(row["clicks"] ?? 0);
     const spend = Number(row["costInUsd"] ?? 0);
