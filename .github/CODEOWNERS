@@ -1,0 +1,4 @@
+# Default reviewer for all changes.
+# Auto-requests review on every PR — keeps a maintainer in the loop
+# even when teammates or contributors push to feature branches.
+* @ZLeventer
