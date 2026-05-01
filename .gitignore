@@ -4,3 +4,14 @@ node_modules/
 token.json
 *.json.bak
 .claude/
+
+# Separate git repos that live alongside this one
+marketo/
+e2open-mcp-marketing-marketo/
+
+# Local test scripts
+test-*.mjs
+snapshots/
+
+# Recoverable cleanup (per Claude Project convention)
+.trash/

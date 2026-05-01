@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Pre-push hook — scans the full diff being pushed (origin/main..HEAD).
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/scan-changes.sh" --mode=pre-push

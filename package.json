@@ -15,7 +15,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
-    "prepare": "npm run build",
+    "prepare": "husky",
     "auth": "tsc && node dist/init-auth.js"
   },
   "keywords": [
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "husky": "^9.1.7",
     "typescript": "^5.7.2"
   },
   "engines": {

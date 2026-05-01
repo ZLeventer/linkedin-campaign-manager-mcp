@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Pre-commit hook — runs the shared scanner against staged changes.
+# Source of truth lives in scripts/scan-changes.sh so we can update once
+# and replicate to every repo via the rollout script in REPO-RULES.md.
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/scan-changes.sh" --mode=pre-commit
